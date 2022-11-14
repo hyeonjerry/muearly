@@ -3,11 +3,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 import django
 django.setup()
 
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium import webdriver
 import requests
 from bs4 import BeautifulSoup
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -18,82 +13,68 @@ from muearly.models import Product
 
 PRICE_URL = 'https://rcb.musinsa.com/total'
 PRODUCT_URL = 'https://www.musinsa.com/app/blackfriday/special'
-USER_AGENT = {'User-Agent': 'Mozilla/5.0'}
+USER_AGENT = {'User-Agent':'Mozilla/5.0'}
 last_updated_date = 0
-
-options = Options()
-options.add_argument('headless')
-options.add_argument('--window-size=1920,1080')
-driver = webdriver.Chrome(options=options)
-wait = WebDriverWait(driver, 60)
 
 block_sched = BlockingScheduler()
 daemon_sched = BackgroundScheduler()
 
 
-def wait_select(selector):
-    return wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
-
-
-def wait_selects(selector):
-    return wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, selector)))
-
-
 @daemon_sched.scheduled_job('interval', seconds=5, id='price')
 def crawl_price():
-    req = requests.get(PRICE_URL, USER_AGENT).json()
+    req = requests.get(PRICE_URL, headers=USER_AGENT).json()
     price = req['totalAmount']['purchase']
     Price.objects.create(price=price)
 
 
-@block_sched.scheduled_job('cron', hour=12, minute=5, id='product')
+@block_sched.scheduled_job('cron', minute=5, id='product')
 def crawl_product():
-    driver.get(PRODUCT_URL)
-    # 시간 섹션 조회
-    time_sections = get_time_sections()
-    item_sections = get_item_sections()
-    for time_section, item_section in zip(time_sections, item_sections):
-        items = parse_items(item_section, time_section)
-        Product.objects.bulk_create(items)
+    req = requests.get(PRODUCT_URL, headers=USER_AGENT)
+    soup = BeautifulSoup(req.text, 'html.parser')
+    sessions = parse_sessions(soup)
+    pannels = parse_pannels(soup)
+    objects = []
+    for session, pannel in zip(sessions, pannels):
+        items = parse_items(pannel)
+        objects.extend(get_objects(session, items))
+    Product.objects.bulk_create(objects)
 
 
-def get_time_sections():
-    section_selector = 'button.CTab__button.CTab__item.arriveSpecial__item'
-    section_objs = wait_selects(section_selector)
-    return [section.text for section in section_objs]
+def parse_sessions(soup):
+    session_selector = 'button.CTab__button.CTab__item.arriveSpecial__item'
+    sessions = soup.select(session_selector)
+    return [session.text.strip() for session in sessions]
 
 
-def get_item_sections():
-    section_selector = 'section.CSection.CSection__arriveSpecial > div.CTab > div.CTab__panel'
-    section_objs = wait_selects(section_selector)
-    return [section.get_attribute('innerHTML') for section in section_objs]
+def parse_pannels(soup):
+    pannel_selector = 'section.CSection.CSection__arriveSpecial > div.CTab > div.CTab__panel'
+    return soup.select(pannel_selector)
 
 
-def click_show_more():
-    more_selector = 'a.CButton.CButton--radius.CButton--more'
-    wait_select(more_selector).click()
+def parse_items(pannel):
+    item_selector = 'div.list-container.column4 > div.list-item'
+    return pannel.select(item_selector)
 
 
-def get_items():
-    item_selector = 'div.CTab > div:nth-child(5) > div:nth-child(1) > div.list-container.column4 > div.list-item > div.CGoods'
-    return wait_selects(item_selector)
+def get_object(item, session):
+    src = item.select_one('img').get('data-original')
+    if Product.objects.filter(src=src):
+        return None
+    brand = item.select_one('span.CGoods__brand').text
+    discount = item.select_one('span.CGoods__price__rate').text
+    price = item.select_one('span.CGoods__price__org').text.replace(',', '')
+    quantity = item.select_one('span.CGoods__price__limit').text
+    # TODO: url 파싱 구현
+    return Product(src=src, brand=brand, discount=discount, price=price, limit_count=quantity, section=session)
 
 
-def parse_items(source, section):
-    item_selector = 'div.CGoods'
-    soup = BeautifulSoup(source, 'html.parser')
-    items = soup.select(item_selector)
-    result = []
+def get_objects(session, items):
+    objects = []
     for item in items:
-        brand = item.select_one('span.CGoods__brand').text
-        src = item.select_one('img').get('data-original')
-        limit_count = item.select_one('span.CGoods__price__limit').text
-        price = item.select_one(
-            'span.CGoods__price__org').text.replace(',', '')
-        discount = item.select_one('span.CGoods__price__rate').text
-        result.append(Product(brand=brand, src=src, limit_count=limit_count,
-                      price=price, discount=discount, section=section))
-    return result
+        obj = get_object(item, session)
+        if obj:
+            objects.append(obj)
+    return objects
 
 
 if __name__ == '__main__':
