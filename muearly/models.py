@@ -13,4 +13,4 @@ class Product(models.Model):
     price = models.IntegerField()
     discount = models.IntegerField()
     section = models.CharField(max_length=6)
-    created_date = models.DateTimeField(auto_now_add=True)
+    created_date = models.DateField(auto_now_add=True)

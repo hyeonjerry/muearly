@@ -50,20 +50,23 @@ def crawl_price():
 def crawl_product():
     driver.get(PRODUCT_URL)
     # 시간 섹션 조회
-    sections = get_sections()
-    for section in sections:
-        section.click()
-        # 더보기
-        click_show_more()
-        # 상품 조회
-        source = driver.page_source
-        items = parse_items(source, section.text)
+    time_sections = get_time_sections()
+    item_sections = get_item_sections()
+    for time_section, item_section in zip(time_sections, item_sections):
+        items = parse_items(item_section, time_section)
         Product.objects.bulk_create(items)
 
 
-def get_sections():
+def get_time_sections():
     section_selector = 'button.CTab__button.CTab__item.arriveSpecial__item'
-    return wait_selects(section_selector)
+    section_objs = wait_selects(section_selector)
+    return [section.text for section in section_objs]
+
+
+def get_item_sections():
+    section_selector = 'section.CSection.CSection__arriveSpecial > div.CTab > div.CTab__panel'
+    section_objs = wait_selects(section_selector)
+    return [section.get_attribute('innerHTML') for section in section_objs]
 
 
 def click_show_more():
@@ -77,7 +80,7 @@ def get_items():
 
 
 def parse_items(source, section):
-    item_selector = 'div.CTab > div:nth-child(5) > div:nth-child(1) > div.list-container.column4 > div.list-item > div.CGoods'
+    item_selector = 'div.CGoods'
     soup = BeautifulSoup(source, 'html.parser')
     items = soup.select(item_selector)
     result = []
@@ -85,12 +88,15 @@ def parse_items(source, section):
         brand = item.select_one('span.CGoods__brand').text
         src = item.select_one('img').get('data-original')
         limit_count = item.select_one('span.CGoods__price__limit').text
-        price = item.select_one('span.CGoods__price__org').text.replace(',', '')
+        price = item.select_one(
+            'span.CGoods__price__org').text.replace(',', '')
         discount = item.select_one('span.CGoods__price__rate').text
-        result.append(Product(brand=brand, src=src, limit_count=limit_count, price=price, discount=discount, section=section))
+        result.append(Product(brand=brand, src=src, limit_count=limit_count,
+                      price=price, discount=discount, section=section))
     return result
 
 
 if __name__ == '__main__':
+    crawl_product()
     daemon_sched.start()
     block_sched.start()
