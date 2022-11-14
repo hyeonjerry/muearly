@@ -3,6 +3,7 @@
 
 # User
 secret.py
+chromedriver
 
 ### Django ###
 *.log
