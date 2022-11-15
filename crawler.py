@@ -43,7 +43,7 @@ def parse_pannels():
     sessions = parse_sessions(soup)
     tab_uids = get_tab_uids(sessions)
     pannels = get_pannels(tab_uids)
-    return {session.text: pannel for session, pannel in zip(sessions, pannels)}
+    return {session.text.strip(): pannel for session, pannel in zip(sessions, pannels)}
 
 
 def parse_sessions(soup):
