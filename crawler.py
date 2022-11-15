@@ -13,7 +13,7 @@ from muearly.models import Product
 
 PRICE_URL = 'https://rcb.musinsa.com/total'
 PRODUCT_URL = 'https://www.musinsa.com/app/blackfriday/special'
-USER_AGENT = {'User-Agent':'Mozilla/5.0'}
+USER_AGENT = {'User-Agent': 'Mozilla/5.0'}
 last_updated_date = 0
 
 block_sched = BlockingScheduler()
@@ -29,26 +29,54 @@ def crawl_price():
 
 @block_sched.scheduled_job('cron', minute=5, id='product')
 def crawl_product():
-    req = requests.get(PRODUCT_URL, headers=USER_AGENT)
-    soup = BeautifulSoup(req.text, 'html.parser')
-    sessions = parse_sessions(soup)
-    pannels = parse_pannels(soup)
+    pannels = parse_pannels()
     objects = []
-    for session, pannel in zip(sessions, pannels):
+    for session, pannel in pannels.items():
         items = parse_items(pannel)
         objects.extend(get_objects(session, items))
     Product.objects.bulk_create(objects)
 
 
+def parse_pannels():
+    req = requests.get(PRODUCT_URL, headers=USER_AGENT)
+    soup = BeautifulSoup(req.text, 'html.parser')
+    sessions = parse_sessions(soup)
+    tab_uids = get_tab_uids(sessions)
+    pannels = get_pannels(tab_uids)
+    return {session.text: pannel for session, pannel in zip(sessions, pannels)}
+
+
 def parse_sessions(soup):
-    session_selector = 'button.CTab__button.CTab__item.arriveSpecial__item'
-    sessions = soup.select(session_selector)
-    return [session.text.strip() for session in sessions]
+    session_selector = 'div.CTab__list.arriveSpecial__list > button.CTab__button'
+    return soup.select(session_selector)
 
 
-def parse_pannels(soup):
-    pannel_selector = 'section.CSection.CSection__arriveSpecial > div.CTab > div.CTab__panel'
-    return soup.select(pannel_selector)
+def get_tab_uids(sessions):
+    uids = []
+    for session in sessions:
+        onclick = session.get('onclick')
+        uid = onclick[onclick.find("'")+1:onclick.find(",")-1]
+        uids.append(uid)
+    return uids
+
+
+def get_pannels(uids):
+    url = 'https://www.musinsa.com/app/blackfriday/get_campaign_tab_data'
+    datas = [{'tab_uid': uid} for uid in uids]
+    pannels = []
+    for data in datas:
+        req = requests.post(url, data=data, headers=USER_AGENT)
+        source = convert_unicode_escape(req.text)
+        soup = BeautifulSoup(source, 'html.parser')
+        pannels.append(soup)
+    return pannels
+
+
+def convert_unicode_escape(source):
+    bytes_source = source.encode('utf-8')
+    text = bytes_source.decode('unicode_escape')
+    text = text.replace('\\/', '/')
+    return text
 
 
 def parse_items(pannel):
