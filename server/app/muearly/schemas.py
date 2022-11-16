@@ -12,4 +12,4 @@ class MuearlyBase(BaseModel):
 
 class Muearly(MuearlyBase):
     class Config():
-        orm_model = True
+        orm_mode = True
