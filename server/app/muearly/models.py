@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, Date
 import datetime
 
 from app.muearly.database import Base
@@ -15,4 +15,4 @@ class Product(Base):
     price = Column(Integer)
     quantity = Column(Integer)
     tab = Column(String(2))
-    created_date = Column(DateTime, default=datetime.datetime.now)
+    created_date = Column(Date, default=datetime.datetime.now)

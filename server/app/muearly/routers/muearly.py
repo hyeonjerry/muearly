@@ -13,6 +13,6 @@ router = APIRouter(
 get_db = database.get_db
 
 
-@router.get('/products', response_model=List[schemas.Muearly])
-def all(db: Session = Depends(get_db)):
-    return muearly.get_all_products(db)
+@router.get('/products/{tab}', response_model=List[schemas.Muearly])
+def all(tab: str, db: Session = Depends(get_db)):
+    return muearly.get_all_products(tab, db)
