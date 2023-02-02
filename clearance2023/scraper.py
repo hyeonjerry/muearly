@@ -4,6 +4,8 @@ import django
 django.setup()
 
 import time
+from apscheduler.schedulers.blocking import BlockingScheduler
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -23,6 +25,8 @@ options.add_argument('headless')
 options.add_argument('window-size=1920x1080')
 options.add_argument("disable-gpu")
 service = Service(driver_path)
+
+sched = BlockingScheduler()
 
 
 class Scraper:
@@ -116,7 +120,30 @@ class PricesaleScraper(Scraper):
         self.driver = None
 
 
-ts = TimesaleScraper()
-ps = PricesaleScraper()
-ts.run()
-ps.run()
+class Main:
+    def __init__(self) -> None:
+        self.ts = TimesaleScraper()
+        self.ps = PricesaleScraper()
+        self.driver = None
+
+    def wait_until(self):
+        time_selector = '#time_area'
+        self.driver = Chrome(service=service, options=options)
+        self.driver.get(time_url)
+        while True:
+            server_time = self.driver.find_element(
+                By.CSS_SELECTOR, time_selector).text
+            if server_time >= '15시 00분 00초':
+                break
+
+    def run(self):
+        self.wait_until()
+        self.ts.run()
+        self.ps.run()
+
+
+if __name__ == '__main__':
+    main = Main()
+    # main.run()
+    sched.add_job(main.run, 'cron', hour=14, minute=55)
+    sched.start()
