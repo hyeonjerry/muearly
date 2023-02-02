@@ -1,0 +1,85 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container my-3">
+  <div class="card text-center my-3" id="timesale">
+    <div class="card-header">150분 한정! 할인에 할인을 붙인</div>
+    <div class="card-body">
+      <h5 class="card-title">매일 15시 타임딜</h5>
+      <a
+        href="https://www.musinsa.com/app/campaign/index/outlet_clearance_2023#timesale"
+        class="btn btn-primary"
+        target="_blank"
+        >사이트 바로가기</a
+      >
+    </div>
+  </div>
+
+  <div class="row row-cols-1 row-cols-md-6 g-4">
+    {% for product in timesales %}
+    <div class="col">
+      <div class="card h-100">
+        <a
+          href="{{ product.url }}"
+          style="text-decoration: none; color: black"
+          target="_blank"
+        >
+          <img src="{{ product.img }}" class="card-img-top" alt="상품 이미지" />
+          <div class="card-body">
+            <p class="card-text">
+              <strong>{{ product.brand }}</strong>
+              <br />
+              {{ product.name }}
+            </p>
+            <p class="card-text">
+              {{ product.sale_price }}
+              <del class="text-secondary">{{ product.normal_price }}</del>
+              <span class="text-danger">{{product.discount_rate }}%</span>
+            </p>
+          </div>
+        </a>
+      </div>
+    </div>
+    {% endfor%}
+  </div>
+
+  <div class="card text-center my-3" id="pricesale">
+    <div class="card-header">할인에 균일가 혜택을 붙인</div>
+    <div class="card-body">
+      <h5 class="card-title">하루 균일가 특가</h5>
+      <a
+        href="https://www.musinsa.com/app/campaign/index/outlet_clearance_2023/0#pricesale"
+        class="btn btn-primary"
+        target="_blank"
+        >사이트 바로가기</a
+      >
+    </div>
+  </div>
+
+  <div class="row row-cols-1 row-cols-md-6 g-4">
+    {% for product in pricesales %}
+    <div class="col">
+      <div class="card h-100">
+        <a
+          href="{{ product.url }}"
+          style="text-decoration: none; color: black"
+          target="_blank"
+        >
+          <img src="{{ product.img }}" class="card-img-top" alt="상품 이미지" />
+          <div class="card-body">
+            <p class="card-text">
+              <strong>{{ product.brand }}</strong>
+              <br />
+              {{ product.name }}
+            </p>
+            <p class="card-text">
+              {{ product.sale_price }}
+              <del class="text-secondary">{{ product.normal_price }}</del>
+              <span class="text-danger">{{product.discount_rate }}%</span>
+            </p>
+          </div>
+        </a>
+      </div>
+    </div>
+    {% endfor%}
+  </div>
+</div>
+{% endblock %}
