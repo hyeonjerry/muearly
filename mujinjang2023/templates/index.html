@@ -1,0 +1,32 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container my-3">
+  <div class="alert alert-primary text-center" role="alert">
+    {{ time }}시 선착순 특가
+  </div>
+
+  <div class="row row-cols-1 row-cols-md-6 g-4">
+    {% for product in products %}
+    <div class="col">
+      <div class="card h-100">
+        <a
+          href="{{ product.url }}"
+          style="text-decoration: none; color: black"
+          target="_blank"
+        >
+          <img src="{{ product.img }}" class="card-img-top" alt="상품 이미지" />
+          <div class="card-body">
+            <p class="card-text">
+              <strong>{{ product.brand }}</strong>
+            </p>
+            <p class="card-text">
+              {{ product.sale_price }}
+              <span class="text-danger">{{product.discount_rate }}%</span>
+            </p>
+          </div>
+        </a>
+      </div>
+    </div>
+    {% endfor%}
+  </div>
+</div>
+{% endblock %}
